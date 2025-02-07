@@ -48,7 +48,7 @@ export default function FileUploadArea({
         onFileSelected(file);
       }
     },
-    [onFileSelected],
+    [onFileSelected]
   );
 
   const handleInputChange = useCallback(
@@ -58,7 +58,7 @@ export default function FileUploadArea({
         handleFileSelection(file);
       }
     },
-    [handleFileSelection],
+    [handleFileSelection]
   );
 
   const handleCompressFile = useCallback(() => {
@@ -87,7 +87,7 @@ export default function FileUploadArea({
           </p>
           <div className="flex gap-4">
             <Button onClick={handleCompressFile}>Compress File</Button>
-            <Button variant="outline" onClick={handleTryAnotherFile}>
+            <Button variant="destructive" onClick={handleTryAnotherFile}>
               Try Another File
             </Button>
           </div>
@@ -123,11 +123,7 @@ export default function FileUploadArea({
             Drag and drop your audio file here
           </p>
           <p className="text-sm text-muted-foreground">or</p>
-          <Button
-            variant="secondary"
-            className="mt-2"
-            onClick={() => inputRef.current?.click()}
-          >
+          <Button className="mt-2" onClick={() => inputRef.current?.click()}>
             Choose File
           </Button>
         </div>

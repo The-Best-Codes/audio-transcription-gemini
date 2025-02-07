@@ -39,31 +39,29 @@ export default function TranscriptionArea({
 
   return (
     <Card className="p-4">
-      <ScrollArea className="h-[400px] w-full rounded-md border p-4">
-        <div className="max-w-[600px] mx-auto">
-          {isTranscribing && !text && (
-            <div className="flex items-center justify-center h-full gap-2">
-              <Loader2 className="w-8 h-8 animate-spin" />
-              <p className="text-muted-foreground">Transcribing audio...</p>
-            </div>
-          )}
-
+      {isTranscribing && (
+        <div className="flex items-center h-full gap-2">
+          <Loader2 className="animate-spin text-muted-foreground" />
+          <p className="text-muted-foreground">Transcribing audio...</p>
+        </div>
+      )}
+      <ScrollArea className="h-96 w-full rounded-md border p-4 mt-2">
+        <div className="w-full">
           <p className="text-lg leading-relaxed whitespace-pre-wrap">{text}</p>
-
-          {!isTranscribing && text && (
-            <div className="flex justify-end gap-2 mt-4 sticky bottom-0 bg-background p-2">
-              <Button variant="outline" size="sm" onClick={handleCopy}>
-                <Copy className="w-4 h-4 mr-2" />
-                Copy
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleDownload}>
-                <Download className="w-4 h-4 mr-2" />
-                Download
-              </Button>
-            </div>
-          )}
         </div>
       </ScrollArea>
+      {!isTranscribing && text && (
+        <div className="flex justify-end gap-2 mt-4 sticky bottom-0 bg-background p-2">
+          <Button variant="outline" onClick={handleCopy}>
+            <Copy className="w-4 h-4" />
+            Copy
+          </Button>
+          <Button onClick={handleDownload}>
+            <Download className="w-4 h-4" />
+            Download
+          </Button>
+        </div>
+      )}
     </Card>
   );
 }

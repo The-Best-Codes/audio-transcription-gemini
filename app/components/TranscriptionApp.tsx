@@ -200,13 +200,13 @@ export default function TranscriptionApp() {
           {selectedFile && !isTranscribing && !transcriptionText && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  Selected file: {selectedFile.name}
-                </p>
-                <Button variant="ghost" size="sm" onClick={handleReset}>
+                <Button onClick={handleReset}>
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Choose Another File
                 </Button>
+                <p className="text-sm text-muted-foreground">
+                  Selected file: {selectedFile.name}
+                </p>
               </div>
               <Button
                 className="w-full"

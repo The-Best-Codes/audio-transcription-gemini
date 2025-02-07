@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
@@ -15,7 +16,7 @@ const genAI = new GoogleGenerativeAI(
   process.env.NEXT_PUBLIC_GEMINI_API_KEY || ""
 );
 const model = genAI.getGenerativeModel({
-  model: "gemini-2.0-flash-thinking-exp-01-21",
+  model: "gemini-2.0-flash-thinking-exp-01-21", // or "gemini-2.0-flash-lite-preview-02-05"
 });
 
 export default function TranscriptionApp() {
@@ -26,6 +27,7 @@ export default function TranscriptionApp() {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileDuration, setFileDuration] = useState<number | null>(null);
+  const [customInstructions, setCustomInstructions] = useState("");
   const ffmpegRef = useRef(new FFmpeg());
 
   // Initialize FFmpeg
@@ -200,7 +202,27 @@ export default function TranscriptionApp() {
             {
               role: "user",
               parts: [
-                { text: "Please transcribe this audio file accurately:" },
+                {
+                  text: "System instructions: You are an AI audio transcriber. Users will upload an audio file and you should transcribe it, responding only with the text content of the audio file and nothing else. Users may also provide custom instructions which you should take into account. If you hear no words, respond with 'No speech detected.'",
+                },
+              ],
+            },
+            {
+              role: "model",
+              parts: [
+                {
+                  text: "Understood.",
+                },
+              ],
+            },
+            {
+              role: "user",
+              parts: [
+                {
+                  text: customInstructions
+                    ? `Please transcribe this audio file accurately. Custom instructions: ${customInstructions}.`
+                    : "Please transcribe this audio file accurately:",
+                },
                 {
                   inlineData: { mimeType: selectedFile.type, data: audioData },
                 },
@@ -227,7 +249,7 @@ export default function TranscriptionApp() {
     } finally {
       setIsTranscribing(false);
     }
-  }, [selectedFile]);
+  }, [selectedFile, customInstructions]);
 
   const handleReset = useCallback(() => {
     setSelectedFile(null);
@@ -235,6 +257,7 @@ export default function TranscriptionApp() {
     setIsTranscribing(false);
     setCompressionProgress(0);
     setFileDuration(null);
+    setCustomInstructions("");
   }, []);
 
   return (
@@ -291,9 +314,7 @@ export default function TranscriptionApp() {
                   <div>
                     <p className="text-sm font-medium">Duration</p>
                     <p className="text-sm text-muted-foreground">
-                      {fileDuration
-                        ? formatDuration(fileDuration)
-                        : "Calculating..."}
+                      {fileDuration ? formatDuration(fileDuration) : "Unknown"}
                     </p>
                   </div>
                   <div>
@@ -305,13 +326,24 @@ export default function TranscriptionApp() {
                 </div>
               </Card>
 
-              <Button
-                className="w-full"
-                onClick={transcribeAudio}
-                disabled={isLoading}
-              >
-                Transcribe Audio
-              </Button>
+              <div className="space-y-4">
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium mb-1">Custom Instructions (optional)</p>
+                  <Textarea
+                    placeholder="Example: 'Transcribe professionally with no duplicate words or stumbling phrases like um or uh'"
+                    value={customInstructions}
+                    onChange={(e) => setCustomInstructions(e.target.value)}
+                    className="min-h-[100px]"
+                  />
+                </div>
+                <Button
+                  className="w-full"
+                  onClick={transcribeAudio}
+                  disabled={isLoading}
+                >
+                  Transcribe Audio
+                </Button>
+              </div>
             </div>
           )}
 

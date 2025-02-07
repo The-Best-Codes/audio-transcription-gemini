@@ -42,7 +42,7 @@ export default function FileUploadArea({
         reader.readAsDataURL(file);
       });
     },
-    []
+    [],
   );
 
   const handleFileSelection = useCallback(
@@ -53,7 +53,7 @@ export default function FileUploadArea({
         const duration = await checkAudioDuration(file);
         if (duration > MAX_DURATION) {
           setDurationError(
-            "Audio file is longer than 8 hours. Please choose a shorter file."
+            "Audio file is longer than 8 hours. Please choose a shorter file.",
           );
           return;
         }
@@ -66,11 +66,11 @@ export default function FileUploadArea({
       } catch (error) {
         console.error("Error checking audio duration:", error);
         setDurationError(
-          "Failed to check audio duration. Please try another file."
+          "Failed to check audio duration. Please try another file.",
         );
       }
     },
-    [onFileSelected, checkAudioDuration]
+    [onFileSelected, checkAudioDuration],
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -80,7 +80,7 @@ export default function FileUploadArea({
           await handleFileSelection(acceptedFiles[0]);
         }
       },
-      [handleFileSelection]
+      [handleFileSelection],
     ),
     accept: {
       "audio/*": [],
@@ -92,7 +92,6 @@ export default function FileUploadArea({
   const handleCompressFile = useCallback(() => {
     if (oversizedFile) {
       onCompressFile(oversizedFile);
-      setOversizedFile(null);
     }
   }, [oversizedFile, onCompressFile]);
 
@@ -103,10 +102,12 @@ export default function FileUploadArea({
 
   if (durationError) {
     return (
-      <Alert variant="destructive" className="mb-4">
-        <Clock className="h-4 w-4" />
-        <AlertTitle>Duration Limit Exceeded</AlertTitle>
-        <AlertDescription>
+      <Alert variant="destructive" className="mb-4 rounded-md shadow-sm">
+        <Clock className="h-5 w-5" />
+        <AlertTitle className="text-lg font-semibold">
+          Duration Limit Exceeded
+        </AlertTitle>
+        <AlertDescription className="text-sm">
           <p className="mb-4">{durationError}</p>
           <Button variant="destructive" onClick={handleTryAnotherFile}>
             Try Another File
@@ -118,10 +119,15 @@ export default function FileUploadArea({
 
   if (oversizedFile) {
     return (
-      <Alert variant="destructive" className="mb-4">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Large File Detected</AlertTitle>
-        <AlertDescription>
+      <Alert
+        variant="destructive"
+        className="mb-4 rounded-md shadow-sm dark:bg-red-900/50 dark:border-red-700"
+      >
+        <AlertCircle className="h-5 w-5" />
+        <AlertTitle className="text-lg font-semibold">
+          Large File Detected
+        </AlertTitle>
+        <AlertDescription className="text-sm">
           <p className="mb-4">
             The selected file is larger than 25MB. Would you like to compress it
             or try another file?
@@ -130,7 +136,11 @@ export default function FileUploadArea({
             <Button onClick={handleCompressFile} disabled={isCompressing}>
               {isCompressing ? "Compressing..." : "Compress File"}
             </Button>
-            <Button variant="destructive" onClick={handleTryAnotherFile}>
+            <Button
+              variant="destructive"
+              onClick={handleTryAnotherFile}
+              disabled={isCompressing}
+            >
               Try Another File
             </Button>
           </div>
@@ -146,8 +156,8 @@ export default function FileUploadArea({
         isDragActive
           ? "border-primary bg-primary/10"
           : isCompressing
-          ? "border-muted-foreground/25 opacity-50 cursor-not-allowed"
-          : "border-muted-foreground/25 cursor-pointer"
+            ? "border-muted-foreground/25 opacity-50 cursor-not-allowed"
+            : "border-muted-foreground/25 cursor-pointer"
       }`}
     >
       <input {...getInputProps()} />

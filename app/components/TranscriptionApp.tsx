@@ -67,55 +67,63 @@ export default function TranscriptionApp() {
     loadFFmpeg();
   }, []);
 
-  const compressFile = useCallback(async (file: File) => {
-    setIsLoading(true);
-    setCompressionProgress(0);
-
-    try {
-      const ffmpeg = ffmpegRef.current;
-      const inputFileName =
-        "input" + file.name.substring(file.name.lastIndexOf("."));
-
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-      await ffmpeg.writeFile(inputFileName, uint8Array);
-
-      const outputFileName =
-        "compressed" + file.name.substring(file.name.lastIndexOf("."));
-      await ffmpeg.exec([
-        "-i",
-        inputFileName,
-        "-b:a",
-        "16k",
-        "-ar",
-        "16000",
-        "-ac",
-        "1",
-        "-compression_level",
-        "9",
-        outputFileName,
-      ]);
-
-      const data = await ffmpeg.readFile(outputFileName);
-      const compressedBlob = new Blob([data], { type: file.type });
-      const compressedFile = new File(
-        [compressedBlob],
-        "compressed_" + file.name,
-        {
-          type: file.type,
-        },
-      );
-
-      setSelectedFile(compressedFile);
-      toast.success("File compressed successfully");
-    } catch (error) {
-      console.error("Compression error:", error);
-      toast.error("Failed to compress file");
-    } finally {
-      setIsLoading(false);
+  const compressFile = useCallback(
+    async (
+      file: File,
+      onCompressionFinished: (compressedFile: File) => void,
+    ) => {
+      setIsLoading(true);
       setCompressionProgress(0);
-    }
-  }, []);
+
+      try {
+        const ffmpeg = ffmpegRef.current;
+        const inputFileName =
+          "input" + file.name.substring(file.name.lastIndexOf("."));
+
+        const arrayBuffer = await file.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+        await ffmpeg.writeFile(inputFileName, uint8Array);
+
+        const outputFileName =
+          "compressed" + file.name.substring(file.name.lastIndexOf("."));
+        await ffmpeg.exec([
+          "-i",
+          inputFileName,
+          "-b:a",
+          "16k",
+          "-ar",
+          "16000",
+          "-ac",
+          "1",
+          "-compression_level",
+          "9",
+          outputFileName,
+        ]);
+
+        const data = await ffmpeg.readFile(outputFileName);
+        const compressedBlob = new Blob([data], { type: file.type });
+        const compressedFile = new File(
+          [compressedBlob],
+          "compressed_" + file.name,
+          {
+            type: file.type,
+          },
+        );
+
+        // Call the callback with the compressed file
+        onCompressionFinished(compressedFile);
+
+        toast.success("File compressed successfully");
+      } catch (error) {
+        console.error("Compression error:", error);
+        toast.error("Failed to compress file");
+      } finally {
+        setIsLoading(false);
+        setCompressionProgress(0);
+      }
+    },
+    [],
+  );
 
   const formatFileSize = (bytes: number): string => {
     const units = ["B", "KB", "MB", "GB"];
@@ -300,6 +308,10 @@ export default function TranscriptionApp() {
     }
   }, [selectedFile, customInstructions, apiKey]);
 
+  const handleCompressedFile = useCallback((compressedFile: File) => {
+    setSelectedFile(compressedFile);
+  }, []);
+
   return (
     <div className="container max-w-4xl mx-auto p-4 space-y-4">
       <Card>
@@ -361,7 +373,9 @@ export default function TranscriptionApp() {
               {!selectedFile && (
                 <FileUploadArea
                   onFileSelected={handleFileSelected}
-                  onCompressFile={compressFile}
+                  onCompressFile={(file) =>
+                    compressFile(file, handleCompressedFile)
+                  }
                   isCompressing={isLoading}
                 />
               )}

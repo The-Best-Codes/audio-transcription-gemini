@@ -1,65 +1,93 @@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { AlertCircle, Upload } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { AlertCircle, Clock, Upload } from "lucide-react";
+import { useCallback, useState } from "react";
+import { useDropzone } from "react-dropzone";
 
 interface FileUploadAreaProps {
   onFileSelected: (file: File) => void;
   onCompressFile: (file: File) => void;
+  isCompressing?: boolean;
 }
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB in bytes
+const MAX_DURATION = 8 * 60 * 60; // 8 hours in seconds
 
 export default function FileUploadArea({
   onFileSelected,
   onCompressFile,
+  isCompressing = false,
 }: FileUploadAreaProps) {
-  const [dragActive, setDragActive] = useState(false);
   const [oversizedFile, setOversizedFile] = useState<File | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [durationError, setDurationError] = useState<string | null>(null);
 
-  const handleDrag = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  }, []);
+  const checkAudioDuration = useCallback(
+    async (file: File): Promise<number> => {
+      return new Promise((resolve, reject) => {
+        const audio = new Audio();
+        const reader = new FileReader();
 
-  const handleFileDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
+        reader.onload = (e) => {
+          audio.src = e.target?.result as string;
+          audio.addEventListener("loadedmetadata", () => {
+            resolve(audio.duration);
+          });
+          audio.addEventListener("error", () => {
+            reject(new Error("Failed to load audio file"));
+          });
+        };
 
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      handleFileSelection(file);
-    }
-  }, []);
+        reader.onerror = () => reject(new Error("Failed to read file"));
+        reader.readAsDataURL(file);
+      });
+    },
+    []
+  );
 
   const handleFileSelection = useCallback(
-    (file: File) => {
-      if (file.size > MAX_FILE_SIZE) {
-        setOversizedFile(file);
-      } else {
-        onFileSelected(file);
+    async (file: File) => {
+      setDurationError(null);
+
+      try {
+        const duration = await checkAudioDuration(file);
+        if (duration > MAX_DURATION) {
+          setDurationError(
+            "Audio file is longer than 8 hours. Please choose a shorter file."
+          );
+          return;
+        }
+
+        if (file.size > MAX_FILE_SIZE) {
+          setOversizedFile(file);
+        } else {
+          onFileSelected(file);
+        }
+      } catch (error) {
+        console.error("Error checking audio duration:", error);
+        setDurationError(
+          "Failed to check audio duration. Please try another file."
+        );
       }
     },
-    [onFileSelected]
+    [onFileSelected, checkAudioDuration]
   );
 
-  const handleInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-        handleFileSelection(file);
-      }
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: useCallback(
+      async (acceptedFiles: File[]) => {
+        if (acceptedFiles.length > 0) {
+          await handleFileSelection(acceptedFiles[0]);
+        }
+      },
+      [handleFileSelection]
+    ),
+    accept: {
+      "audio/*": [],
     },
-    [handleFileSelection]
-  );
+    disabled: isCompressing,
+    multiple: false,
+  });
 
   const handleCompressFile = useCallback(() => {
     if (oversizedFile) {
@@ -70,10 +98,23 @@ export default function FileUploadArea({
 
   const handleTryAnotherFile = useCallback(() => {
     setOversizedFile(null);
-    if (inputRef.current) {
-      inputRef.current.value = "";
-    }
+    setDurationError(null);
   }, []);
+
+  if (durationError) {
+    return (
+      <Alert variant="destructive" className="mb-4">
+        <Clock className="h-4 w-4" />
+        <AlertTitle>Duration Limit Exceeded</AlertTitle>
+        <AlertDescription>
+          <p className="mb-4">{durationError}</p>
+          <Button variant="destructive" onClick={handleTryAnotherFile}>
+            Try Another File
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   if (oversizedFile) {
     return (
@@ -86,7 +127,9 @@ export default function FileUploadArea({
             or try another file?
           </p>
           <div className="flex gap-4">
-            <Button onClick={handleCompressFile}>Compress File</Button>
+            <Button onClick={handleCompressFile} disabled={isCompressing}>
+              {isCompressing ? "Compressing..." : "Compress File"}
+            </Button>
             <Button variant="destructive" onClick={handleTryAnotherFile}>
               Try Another File
             </Button>
@@ -98,37 +141,33 @@ export default function FileUploadArea({
 
   return (
     <Card
+      {...getRootProps()}
       className={`relative p-8 border-2 border-dashed rounded-lg text-center ${
-        dragActive
+        isDragActive
           ? "border-primary bg-primary/10"
-          : "border-muted-foreground/25"
+          : isCompressing
+          ? "border-muted-foreground/25 opacity-50 cursor-not-allowed"
+          : "border-muted-foreground/25 cursor-pointer"
       }`}
-      onDragEnter={handleDrag}
-      onDragLeave={handleDrag}
-      onDragOver={handleDrag}
-      onDrop={handleFileDrop}
     >
-      <input
-        ref={inputRef}
-        type="file"
-        accept="audio/*"
-        onChange={handleInputChange}
-        className="hidden"
-      />
-
+      <input {...getInputProps()} />
       <div className="flex flex-col items-center gap-4">
         <Upload className="w-12 h-12 text-muted-foreground" />
         <div>
           <p className="text-lg font-medium">
-            Drag and drop your audio file here
+            {isCompressing
+              ? "File compression in progress..."
+              : "Drag and drop your audio file here"}
           </p>
-          <p className="text-sm text-muted-foreground">or</p>
-          <Button className="mt-2" onClick={() => inputRef.current?.click()}>
-            Choose File
-          </Button>
+          <p className="text-sm text-muted-foreground">
+            {!isCompressing && "or"}
+          </p>
+          {!isCompressing && <Button className="mt-2">Choose File</Button>}
         </div>
         <p className="text-sm text-muted-foreground">
           Supported formats: MP3, WAV, M4A, etc.
+          <br />
+          Maximum duration: 8 hours
         </p>
       </div>
     </Card>

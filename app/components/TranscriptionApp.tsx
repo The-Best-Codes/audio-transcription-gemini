@@ -25,6 +25,7 @@ export default function TranscriptionApp() {
   const [transcriptionText, setTranscriptionText] = useState("");
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileDuration, setFileDuration] = useState<number | null>(null);
   const ffmpegRef = useRef(new FFmpeg());
 
   // Initialize FFmpeg
@@ -112,10 +113,66 @@ export default function TranscriptionApp() {
     }
   }, []);
 
-  const handleFileSelected = useCallback((file: File) => {
-    setSelectedFile(file);
-    setTranscriptionText("");
+  const formatFileSize = (bytes: number): string => {
+    const units = ["B", "KB", "MB", "GB"];
+    let size = bytes;
+    let unitIndex = 0;
+
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex++;
+    }
+
+    return `${size.toFixed(1)} ${units[unitIndex]}`;
+  };
+
+  const formatDuration = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, "0")}:${remainingSeconds
+        .toString()
+        .padStart(2, "0")}`;
+    }
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  };
+
+  const getAudioDuration = useCallback(async (file: File): Promise<number> => {
+    return new Promise((resolve, reject) => {
+      const audio = new Audio();
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        audio.src = e.target?.result as string;
+        audio.addEventListener("loadedmetadata", () => {
+          resolve(audio.duration);
+        });
+        audio.addEventListener("error", () => {
+          reject(new Error("Failed to load audio file"));
+        });
+      };
+
+      reader.onerror = () => reject(new Error("Failed to read file"));
+      reader.readAsDataURL(file);
+    });
   }, []);
+
+  const handleFileSelected = useCallback(
+    async (file: File) => {
+      try {
+        const duration = await getAudioDuration(file);
+        setFileDuration(duration);
+        setSelectedFile(file);
+        setTranscriptionText("");
+      } catch (error) {
+        console.error("Error handling file selection:", error);
+        toast.error("Failed to process the selected file");
+      }
+    },
+    [getAudioDuration]
+  );
 
   const transcribeAudio = useCallback(async () => {
     if (!selectedFile) return;
@@ -127,6 +184,14 @@ export default function TranscriptionApp() {
       // Convert audio to base64
       const buffer = await selectedFile.arrayBuffer();
       const audioData = Buffer.from(buffer).toString("base64");
+
+      // Check file size again before transcription
+      if (selectedFile.size > 25 * 1024 * 1024) {
+        toast.error(
+          "File is too large. Please try compressing it again or choose a different file."
+        );
+        return;
+      }
 
       // Start the streaming transcription
       try {
@@ -169,6 +234,7 @@ export default function TranscriptionApp() {
     setTranscriptionText("");
     setIsTranscribing(false);
     setCompressionProgress(0);
+    setFileDuration(null);
   }, []);
 
   return (
@@ -183,6 +249,7 @@ export default function TranscriptionApp() {
             <FileUploadArea
               onFileSelected={handleFileSelected}
               onCompressFile={compressFile}
+              isCompressing={isLoading}
             />
           )}
 
@@ -204,10 +271,40 @@ export default function TranscriptionApp() {
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Choose Another File
                 </Button>
-                <p className="text-sm text-muted-foreground">
-                  Selected file: {selectedFile.name}
-                </p>
               </div>
+
+              {/* File Metadata Card */}
+              <Card className="p-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium">File Name</p>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedFile.name}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Size</p>
+                    <p className="text-sm text-muted-foreground">
+                      {formatFileSize(selectedFile.size)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Duration</p>
+                    <p className="text-sm text-muted-foreground">
+                      {fileDuration
+                        ? formatDuration(fileDuration)
+                        : "Calculating..."}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Type</p>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedFile.type || "audio/*"}
+                    </p>
+                  </div>
+                </div>
+              </Card>
+
               <Button
                 className="w-full"
                 onClick={transcribeAudio}

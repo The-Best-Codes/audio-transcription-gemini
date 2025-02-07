@@ -1,24 +1,27 @@
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { toBlobURL } from "@ffmpeg/util";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import FileUploadArea from "./FileUploadArea";
 import TranscriptionArea from "./TranscriptionArea";
 
 export default function TranscriptionApp() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [ffmpegLoaded, setFfmpegLoaded] = useState(false);
   const [apiKey, setApiKey] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('geminiApiKey') || '';
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("geminiApiKey") || "";
     }
-    return '';
+    return "";
   });
+  const [tempApiKey, setTempApiKey] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [compressionProgress, setCompressionProgress] = useState(0);
   const [transcriptionText, setTranscriptionText] = useState("");
@@ -27,6 +30,7 @@ export default function TranscriptionApp() {
   const [fileDuration, setFileDuration] = useState<number | null>(null);
   const [customInstructions, setCustomInstructions] = useState("");
   const ffmpegRef = useRef(new FFmpeg());
+  const [showApiKey, setShowApiKey] = useState(false);
 
   // Initialize FFmpeg
   useEffect(() => {
@@ -46,11 +50,11 @@ export default function TranscriptionApp() {
         await ffmpeg.load({
           coreURL: await toBlobURL(
             `${baseURL}/ffmpeg-core.js`,
-            "text/javascript"
+            "text/javascript",
           ),
           wasmURL: await toBlobURL(
             `${baseURL}/ffmpeg-core.wasm`,
-            "application/wasm"
+            "application/wasm",
           ),
         });
         setFfmpegLoaded(true);
@@ -99,7 +103,7 @@ export default function TranscriptionApp() {
         "compressed_" + file.name,
         {
           type: file.type,
-        }
+        },
       );
 
       setSelectedFile(compressedFile);
@@ -171,7 +175,7 @@ export default function TranscriptionApp() {
         toast.error("Failed to process the selected file");
       }
     },
-    [getAudioDuration]
+    [getAudioDuration],
   );
 
   const handleReset = useCallback(() => {
@@ -184,14 +188,27 @@ export default function TranscriptionApp() {
   }, []);
 
   const handleApiKeyChange = (newKey: string) => {
-    setApiKey(newKey);
-    if (typeof window !== 'undefined') {
-      if (newKey) {
-        localStorage.setItem('geminiApiKey', newKey);
+    setTempApiKey(newKey);
+  };
+
+  const handleSaveApiKey = () => {
+    setApiKey(tempApiKey);
+    if (typeof window !== "undefined") {
+      if (tempApiKey) {
+        localStorage.setItem("geminiApiKey", tempApiKey);
       } else {
-        localStorage.removeItem('geminiApiKey');
+        localStorage.removeItem("geminiApiKey");
       }
     }
+  };
+
+  const handleResetApiKey = () => {
+    setTempApiKey(apiKey);
+    setApiKey("");
+  };
+
+  const toggleShowApiKey = () => {
+    setShowApiKey(!showApiKey);
   };
 
   const transcribeAudio = useCallback(async () => {
@@ -218,7 +235,7 @@ export default function TranscriptionApp() {
       // Check file size again before transcription
       if (selectedFile.size > 25 * 1024 * 1024) {
         toast.error(
-          "File is too large. Please try compressing it again or choose a different file."
+          "File is too large. Please try compressing it again or choose a different file.",
         );
         return;
       }
@@ -271,8 +288,10 @@ export default function TranscriptionApp() {
       toast.success("Transcription complete");
     } catch (error: unknown) {
       console.error("Transcription error:", error);
-      if (error instanceof Error && error.message?.includes('API key')) {
-        toast.error("Invalid API key. Please check your API key and try again.");
+      if (error instanceof Error && error.message?.includes("API key")) {
+        toast.error(
+          "Invalid API key. Please check your API key and try again.",
+        );
       } else {
         toast.error("Failed to transcribe audio");
       }
@@ -287,11 +306,7 @@ export default function TranscriptionApp() {
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle>AI Audio Transcriber</CardTitle>
           {apiKey && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleApiKeyChange('')}
-            >
+            <Button variant="secondary" size="sm" onClick={handleResetApiKey}>
               Reset API Key
             </Button>
           )}
@@ -300,19 +315,44 @@ export default function TranscriptionApp() {
           {/* Show API Key Input or Main Content */}
           {!apiKey ? (
             <div className="space-y-4 p-6 flex flex-col items-center justify-center border-2 border-dashed rounded-lg">
-              <h2 className="text-lg font-semibold">Enter Your Gemini API Key</h2>
+              <h2 className="text-lg font-semibold">
+                Enter Your Gemini API Key
+              </h2>
               <p className="text-sm text-center text-muted-foreground max-w-md">
-                To use the audio transcription service, please enter your Gemini API key. 
-                Your key is stored locally and never sent to our servers.
+                To use the audio transcription service, please enter your Gemini
+                API key. Your key is stored locally and never sent to our
+                servers.
               </p>
-              <div className="w-full max-w-md">
+              <div className="w-full max-w-md relative">
                 <input
-                  type="password"
+                  type={showApiKey ? "text" : "password"}
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                   placeholder="Enter your Gemini API key"
-                  value={apiKey}
+                  value={tempApiKey}
                   onChange={(e) => handleApiKeyChange(e.target.value)}
                 />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleShowApiKey}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6"
+                >
+                  {showApiKey ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                  <span className="sr-only">Show/Hide API Key</span>
+                </Button>
+              </div>
+              <div className="flex flex-row gap-2">
+                <Link
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                >
+                  <Button variant="secondary">Get API Key</Button>
+                </Link>
+                <Button onClick={handleSaveApiKey}>Save API Key</Button>
               </div>
             </div>
           ) : (
@@ -364,7 +404,9 @@ export default function TranscriptionApp() {
                       <div>
                         <p className="text-sm font-medium">Duration</p>
                         <p className="text-sm text-muted-foreground">
-                          {fileDuration ? formatDuration(fileDuration) : "Unknown"}
+                          {fileDuration
+                            ? formatDuration(fileDuration)
+                            : "Unknown"}
                         </p>
                       </div>
                       <div>
@@ -378,7 +420,9 @@ export default function TranscriptionApp() {
 
                   <div className="space-y-4">
                     <div className="flex flex-col">
-                      <p className="text-sm font-medium mb-1">Custom Instructions (optional)</p>
+                      <p className="text-sm font-medium mb-1">
+                        Custom Instructions (optional)
+                      </p>
                       <Textarea
                         placeholder="Example: 'Transcribe professionally with no duplicate words or stumbling phrases like um or uh'"
                         value={customInstructions}

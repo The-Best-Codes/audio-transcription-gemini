@@ -1,12 +1,12 @@
 "use client";
 
-import Home from "./Home";
+import AudioCompressor from "./AudioCompressor";
 import NoSSRWrapper from "./NoSSRWrapper";
 
 export default function Page() {
   return (
     <NoSSRWrapper>
-      <Home />
+      <AudioCompressor />
     </NoSSRWrapper>
   );
 }

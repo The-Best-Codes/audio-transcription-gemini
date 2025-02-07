@@ -61,6 +61,9 @@ export default function TranscriptionApp() {
   const streamRef = useRef<any>(null);
   const [isCancelling, setIsCancelling] = useState(false);
 
+  // Abort Controller
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   // Initialize FFmpeg
   useEffect(() => {
     const loadFFmpeg = async () => {
@@ -227,6 +230,10 @@ export default function TranscriptionApp() {
       streamRef.current.return();
       streamRef.current = null;
     }
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
   }, []);
 
   const handleApiKeyChange = (newKey: string) => {
@@ -259,6 +266,11 @@ export default function TranscriptionApp() {
       streamRef.current.return();
       streamRef.current = null;
     }
+    // Abort the fetch if it's in progress
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
     setIsTranscribing(false);
     toast.info("Transcription cancelled.");
   }, []);
@@ -273,6 +285,10 @@ export default function TranscriptionApp() {
     setIsTranscribing(true);
     setTranscriptionText("");
     setIsCancelling(false);
+
+    // Create a new AbortController instance
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
 
     try {
       // Initialize Gemini AI with the current API key
@@ -295,39 +311,45 @@ export default function TranscriptionApp() {
 
       // Start the streaming transcription
       try {
-        const result = await model.generateContentStream({
-          contents: [
-            {
-              role: "user",
-              parts: [
-                {
-                  text: "System instructions: You are an AI audio transcriber. Users will upload an audio file and you should transcribe it, responding only with the text content of the audio file and nothing else. Users may also provide custom instructions which you should take into account. If you hear no words, respond with 'No speech detected.'",
-                },
-              ],
-            },
-            {
-              role: "model",
-              parts: [
-                {
-                  text: "Understood.",
-                },
-              ],
-            },
-            {
-              role: "user",
-              parts: [
-                {
-                  text: customInstructions
-                    ? `Please transcribe this audio file accurately. Custom instructions: ${customInstructions}.`
-                    : "Please transcribe this audio file accurately:",
-                },
-                {
-                  inlineData: { mimeType: selectedFile.type, data: audioData },
-                },
-              ],
-            },
-          ],
-        });
+        const result = await model.generateContentStream(
+          {
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  {
+                    text: "System instructions: You are an AI audio transcriber. Users will upload an audio file and you should transcribe it, responding only with the text content of the audio file and nothing else. Users may also provide custom instructions which you should take into account. If you hear no words, respond with 'No speech detected.'",
+                  },
+                ],
+              },
+              {
+                role: "model",
+                parts: [
+                  {
+                    text: "Understood.",
+                  },
+                ],
+              },
+              {
+                role: "user",
+                parts: [
+                  {
+                    text: customInstructions
+                      ? `Please transcribe this audio file accurately. Custom instructions: ${customInstructions}.`
+                      : "Please transcribe this audio file accurately:",
+                  },
+                  {
+                    inlineData: {
+                      mimeType: selectedFile.type,
+                      data: audioData,
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+          { signal: signal },
+        ); // Pass the AbortSignal
 
         streamRef.current = result.stream;
         // Handle the streaming response
@@ -339,7 +361,14 @@ export default function TranscriptionApp() {
           setTranscriptionText((prev) => prev + chunkText);
         }
       } catch (error: unknown) {
-        throw error;
+        if (signal.aborted) {
+          // Check if the AbortSignal was the reason
+          console.log("Transcription aborted by user.");
+          toast.info("Transcription aborted.");
+        } else {
+          // Re-throw the error if it wasn't an abort error
+          throw error;
+        }
       }
 
       if (!isCancelling) {
@@ -358,6 +387,7 @@ export default function TranscriptionApp() {
       setIsTranscribing(false);
       setIsCancelling(false);
       streamRef.current = null;
+      abortControllerRef.current = null; // Clear the AbortController
     }
   }, [selectedFile, customInstructions, apiKey, selectedModel, isCancelling]);
 

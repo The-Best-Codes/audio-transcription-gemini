@@ -13,21 +13,24 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { toBlobURL } from "@ffmpeg/util";
+import { Download, File, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 const AudioCompressor = () => {
-  const [loaded, setLoaded] = useState(false);
+  const [ffmpegLoaded, setFfmpegLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0); // For file upload progress
-  const [compressionProgress, setCompressionProgress] = useState(0); // For FFmpeg progress
+  const [compressionProgress, setCompressionProgress] = useState(0);
   const ffmpegRef = useRef(new FFmpeg());
   const [originalAudioURL, setOriginalAudioURL] = useState<string | null>(null);
   const [compressedAudioURL, setCompressedAudioURL] = useState<string | null>(
     null,
   );
   const [inputFileName, setInputFileName] = useState<string | null>(null);
-  const audioInputRef = useRef<HTMLInputElement | null>(null); // Ref for the input element
+  const audioInputRef = useRef<HTMLInputElement | null>(null);
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [ffmpegLoadProgress, setFfmpegLoadProgress] = useState<number>(0);
 
   // Initialize FFmpeg (only once)
   useEffect(() => {
@@ -36,12 +39,14 @@ const AudioCompressor = () => {
       const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd";
       const ffmpeg = ffmpegRef.current;
 
+      const startTime = performance.now();
+
       ffmpeg.on("log", ({ message }) => {
-        console.log(message); // Consider better logging in production
+        console.log(message);
       });
 
       ffmpeg.on("progress", (p) => {
-        setCompressionProgress(p.progress); // Update compression progress
+        setCompressionProgress(p.progress);
       });
 
       try {
@@ -55,17 +60,18 @@ const AudioCompressor = () => {
             "application/wasm",
           ),
         });
-        setLoaded(true);
-        toast("FFmpeg Loaded", {
-          description: "FFmpeg core is ready to compress audio.",
+        setFfmpegLoaded(true);
+        toast.success("FFmpeg Loaded", {
+          description: `FFmpeg core is ready to compress audio. Loaded in ${((performance.now() - startTime) / 1000).toFixed(2)}s`,
         });
       } catch (error) {
         console.error("FFmpeg loading error:", error);
-        toast("Error Loading FFmpeg", {
+        toast.error("Error Loading FFmpeg", {
           description: "Failed to load FFmpeg core.",
         });
       } finally {
         setIsLoading(false);
+        setFfmpegLoadProgress(0);
       }
     };
 
@@ -76,14 +82,14 @@ const AudioCompressor = () => {
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (!file) {
-        toast("No File Selected", {
+        toast.error("No File Selected", {
           description: "Please select an audio file.",
         });
         return;
       }
 
       if (file.type !== "audio/mpeg" && file.type !== "audio/mp3") {
-        toast("Invalid File Type", {
+        toast.error("Invalid File Type", {
           description: "Please select a valid MP3 audio file.",
         });
         return;
@@ -91,32 +97,31 @@ const AudioCompressor = () => {
 
       setInputFileName(file.name);
       setOriginalAudioURL(URL.createObjectURL(file));
+      setCompressedAudioURL(null);
     },
     [],
   );
 
   const compressAudio = useCallback(async () => {
     if (!originalAudioURL || !inputFileName) {
-      toast("No Audio File", {
+      toast.error("No Audio File", {
         description: "Please select an audio file first.",
       });
       return;
     }
 
     setIsLoading(true);
-    setCompressionProgress(0); // Reset progress
+    setCompressionProgress(0);
 
     try {
       const ffmpeg = ffmpegRef.current;
-      const inputFileBaseName = "input.mp3"; // Consistent input name
+      const inputFileBaseName = "input.mp3";
 
-      // Fetch the audio data and write it to FFmpeg's virtual file system
       const response = await fetch(originalAudioURL);
       const arrayBuffer = await response.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
       await ffmpeg.writeFile(inputFileBaseName, uint8Array);
 
-      // Execute the FFmpeg command
       const outputFileName = "output.mp3";
       await ffmpeg.exec([
         "-i",
@@ -132,18 +137,17 @@ const AudioCompressor = () => {
         outputFileName,
       ]);
 
-      // Read the compressed audio data
       const data = await ffmpeg.readFile(outputFileName);
       const blob = new Blob([data], { type: "audio/mp3" });
       const url = URL.createObjectURL(blob);
       setCompressedAudioURL(url);
 
-      toast("Compression Complete", {
+      toast.success("Compression Complete", {
         description: "Audio compression finished successfully.",
       });
     } catch (error) {
       console.error("FFmpeg compression error:", error);
-      toast("Compression Error", {
+      toast.error("Compression Error", {
         description: "Failed to compress the audio.",
       });
     } finally {
@@ -154,7 +158,7 @@ const AudioCompressor = () => {
 
   const downloadCompressedAudio = useCallback(() => {
     if (!compressedAudioURL) {
-      toast("No Compressed Audio", {
+      toast.error("No Compressed Audio", {
         description: "Please compress the audio first.",
       });
       return;
@@ -162,7 +166,7 @@ const AudioCompressor = () => {
 
     const link = document.createElement("a");
     link.href = compressedAudioURL;
-    link.download = "compressed_audio.mp3"; // Customize the download name
+    link.download = "compressed_audio.mp3";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -178,11 +182,23 @@ const AudioCompressor = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
+          {/* FFmpeg Loading State */}
+          {isLoading && !ffmpegLoaded && (
+            <div className="flex items-center space-x-2">
+              <Loader2 className="animate-spin" size={20} />
+              <p className="text-sm font-medium leading-none">
+                Loading FFmpeg...
+              </p>
+            </div>
+          )}
+
+          {/* Audio Upload Section */}
           <div className="flex flex-col space-y-2">
             <label
               htmlFor="audio-upload"
               className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed"
             >
+              <File className="inline-block mr-1" size={16} />
               Upload Audio File (MP3)
             </label>
             <Input
@@ -194,10 +210,16 @@ const AudioCompressor = () => {
               ref={audioInputRef}
             />
             {originalAudioURL && (
-              <audio controls src={originalAudioURL} className="w-full"></audio>
+              <>
+                <p className="text-sm font-medium leading-none">
+                  Original Audio:
+                </p>
+                <audio controls src={originalAudioURL} className="w-full" />
+              </>
             )}
           </div>
 
+          {/* Compression Progress Section */}
           {compressionProgress > 0 && (
             <div>
               <p className="text-sm font-medium leading-none">
@@ -206,35 +228,43 @@ const AudioCompressor = () => {
               <Progress value={compressionProgress * 100} />
             </div>
           )}
+
+          {/* Compressed Audio Preview */}
+          {compressedAudioURL && (
+            <div className="mt-4">
+              <p className="text-sm font-medium leading-none">
+                Compressed Audio:
+              </p>
+              <audio controls src={compressedAudioURL} className="w-full" />
+            </div>
+          )}
         </CardContent>
+
+        {/* Action Buttons */}
         <CardFooter className="flex justify-between">
           <Button
             onClick={compressAudio}
-            disabled={isLoading || !originalAudioURL}
+            disabled={isLoading || !originalAudioURL || !ffmpegLoaded}
           >
-            {isLoading ? "Compressing..." : "Compress Audio"}
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 animate-spin" size={16} />
+                Compressing...
+              </>
+            ) : (
+              "Compress Audio"
+            )}
           </Button>
           <Button
             variant="secondary"
             onClick={downloadCompressedAudio}
             disabled={isLoading || !compressedAudioURL}
           >
+            <Download className="inline-block mr-1" size={16} />
             Download Compressed Audio
           </Button>
         </CardFooter>
       </Card>
-
-      {compressedAudioURL && (
-        <Card className="mt-4">
-          <CardHeader>
-            <CardTitle>Compressed Audio</CardTitle>
-            <CardDescription>Listen to the compressed audio.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <audio controls src={compressedAudioURL} className="w-full"></audio>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };

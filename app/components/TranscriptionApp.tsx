@@ -11,16 +11,14 @@ import { toast } from "sonner";
 import FileUploadArea from "./FileUploadArea";
 import TranscriptionArea from "./TranscriptionArea";
 
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(
-  process.env.NEXT_PUBLIC_GEMINI_API_KEY || ""
-);
-const model = genAI.getGenerativeModel({
-  model: "gemini-2.0-flash-thinking-exp-01-21", // or "gemini-2.0-flash-lite-preview-02-05"
-});
-
 export default function TranscriptionApp() {
   const [ffmpegLoaded, setFfmpegLoaded] = useState(false);
+  const [apiKey, setApiKey] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('geminiApiKey') || '';
+    }
+    return '';
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [compressionProgress, setCompressionProgress] = useState(0);
   const [transcriptionText, setTranscriptionText] = useState("");
@@ -176,13 +174,43 @@ export default function TranscriptionApp() {
     [getAudioDuration]
   );
 
+  const handleReset = useCallback(() => {
+    setSelectedFile(null);
+    setTranscriptionText("");
+    setIsTranscribing(false);
+    setCompressionProgress(0);
+    setFileDuration(null);
+    setCustomInstructions("");
+  }, []);
+
+  const handleApiKeyChange = (newKey: string) => {
+    setApiKey(newKey);
+    if (typeof window !== 'undefined') {
+      if (newKey) {
+        localStorage.setItem('geminiApiKey', newKey);
+      } else {
+        localStorage.removeItem('geminiApiKey');
+      }
+    }
+  };
+
   const transcribeAudio = useCallback(async () => {
     if (!selectedFile) return;
+    if (!apiKey) {
+      toast.error("Please enter your Gemini API key first");
+      return;
+    }
 
     setIsTranscribing(true);
     setTranscriptionText("");
 
     try {
+      // Initialize Gemini AI with the current API key
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.0-flash-thinking-exp-01-21",
+      });
+
       // Convert audio to base64
       const buffer = await selectedFile.arrayBuffer();
       const audioData = Buffer.from(buffer).toString("base64");
@@ -236,134 +264,158 @@ export default function TranscriptionApp() {
           const chunkText = chunk.text();
           setTranscriptionText((prev) => prev + chunkText);
         }
-      } catch (error) {
-        console.error("Generation error:", error);
-        toast.error("Failed to process audio");
-        return;
+      } catch (error: unknown) {
+        throw error;
       }
 
       toast.success("Transcription complete");
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Transcription error:", error);
-      toast.error("Failed to transcribe audio");
+      if (error instanceof Error && error.message?.includes('API key')) {
+        toast.error("Invalid API key. Please check your API key and try again.");
+      } else {
+        toast.error("Failed to transcribe audio");
+      }
     } finally {
       setIsTranscribing(false);
     }
-  }, [selectedFile, customInstructions]);
-
-  const handleReset = useCallback(() => {
-    setSelectedFile(null);
-    setTranscriptionText("");
-    setIsTranscribing(false);
-    setCompressionProgress(0);
-    setFileDuration(null);
-    setCustomInstructions("");
-  }, []);
+  }, [selectedFile, customInstructions, apiKey]);
 
   return (
     <div className="container max-w-4xl mx-auto p-4 space-y-4">
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle>AI Audio Transcriber</CardTitle>
+          {apiKey && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleApiKeyChange('')}
+            >
+              Reset API Key
+            </Button>
+          )}
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* File Upload Section */}
-          {!selectedFile && (
-            <FileUploadArea
-              onFileSelected={handleFileSelected}
-              onCompressFile={compressFile}
-              isCompressing={isLoading}
-            />
-          )}
-
-          {/* Compression Progress */}
-          {isLoading && compressionProgress > 0 && (
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Compressing audio... {Math.round(compressionProgress)}%
+        <CardContent className="space-y-4 pt-4">
+          {/* Show API Key Input or Main Content */}
+          {!apiKey ? (
+            <div className="space-y-4 p-6 flex flex-col items-center justify-center border-2 border-dashed rounded-lg">
+              <h2 className="text-lg font-semibold">Enter Your Gemini API Key</h2>
+              <p className="text-sm text-center text-muted-foreground max-w-md">
+                To use the audio transcription service, please enter your Gemini API key. 
+                Your key is stored locally and never sent to our servers.
               </p>
-              <Progress value={compressionProgress} />
-            </div>
-          )}
-
-          {/* Selected File Info & Actions */}
-          {selectedFile && !isTranscribing && !transcriptionText && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Button onClick={handleReset}>
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Choose Another File
-                </Button>
-              </div>
-
-              {/* File Metadata Card */}
-              <Card className="p-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium">File Name</p>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedFile.name}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Size</p>
-                    <p className="text-sm text-muted-foreground">
-                      {formatFileSize(selectedFile.size)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Duration</p>
-                    <p className="text-sm text-muted-foreground">
-                      {fileDuration ? formatDuration(fileDuration) : "Unknown"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Type</p>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedFile.type || "audio/*"}
-                    </p>
-                  </div>
-                </div>
-              </Card>
-
-              <div className="space-y-4">
-                <div className="flex flex-col">
-                  <p className="text-sm font-medium mb-1">Custom Instructions (optional)</p>
-                  <Textarea
-                    placeholder="Example: 'Transcribe professionally with no duplicate words or stumbling phrases like um or uh'"
-                    value={customInstructions}
-                    onChange={(e) => setCustomInstructions(e.target.value)}
-                    className="min-h-[100px]"
-                  />
-                </div>
-                <Button
-                  className="w-full"
-                  onClick={transcribeAudio}
-                  disabled={isLoading}
-                >
-                  Transcribe Audio
-                </Button>
+              <div className="w-full max-w-md">
+                <input
+                  type="password"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="Enter your Gemini API key"
+                  value={apiKey}
+                  onChange={(e) => handleApiKeyChange(e.target.value)}
+                />
               </div>
             </div>
-          )}
-
-          {/* Transcription Area */}
-          {(isTranscribing || transcriptionText) && (
-            <div className="space-y-4">
-              <TranscriptionArea
-                text={transcriptionText}
-                isTranscribing={isTranscribing}
-              />
-              {!isTranscribing && transcriptionText && (
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleReset}
-                >
-                  Transcribe Another File
-                </Button>
+          ) : (
+            <>
+              {/* File Upload Section */}
+              {!selectedFile && (
+                <FileUploadArea
+                  onFileSelected={handleFileSelected}
+                  onCompressFile={compressFile}
+                  isCompressing={isLoading}
+                />
               )}
-            </div>
+
+              {/* Compression Progress */}
+              {isLoading && compressionProgress > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Compressing audio... {Math.round(compressionProgress)}%
+                  </p>
+                  <Progress value={compressionProgress} />
+                </div>
+              )}
+
+              {/* Selected File Info & Actions */}
+              {selectedFile && !isTranscribing && !transcriptionText && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Button onClick={handleReset}>
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      Choose Another File
+                    </Button>
+                  </div>
+
+                  {/* File Metadata Card */}
+                  <Card className="p-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm font-medium">File Name</p>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedFile.name}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Size</p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatFileSize(selectedFile.size)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Duration</p>
+                        <p className="text-sm text-muted-foreground">
+                          {fileDuration ? formatDuration(fileDuration) : "Unknown"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Type</p>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedFile.type || "audio/*"}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+
+                  <div className="space-y-4">
+                    <div className="flex flex-col">
+                      <p className="text-sm font-medium mb-1">Custom Instructions (optional)</p>
+                      <Textarea
+                        placeholder="Example: 'Transcribe professionally with no duplicate words or stumbling phrases like um or uh'"
+                        value={customInstructions}
+                        onChange={(e) => setCustomInstructions(e.target.value)}
+                        className="min-h-[100px]"
+                      />
+                    </div>
+                    <Button
+                      className="w-full"
+                      onClick={transcribeAudio}
+                      disabled={isLoading}
+                    >
+                      Transcribe Audio
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Transcription Area */}
+              {(isTranscribing || transcriptionText) && (
+                <div className="space-y-4">
+                  <TranscriptionArea
+                    text={transcriptionText}
+                    isTranscribing={isTranscribing}
+                  />
+                  {!isTranscribing && transcriptionText && (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleReset}
+                    >
+                      Transcribe Another File
+                    </Button>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

@@ -1,18 +1,20 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Copy, Download, Loader2 } from "lucide-react";
+import { Copy, Download, Loader2, X } from "lucide-react";
 import { useCallback } from "react";
 import { toast } from "sonner";
 
 interface TranscriptionAreaProps {
   text: string;
   isTranscribing: boolean;
+  onCancel?: () => void; // Add the onCancel prop
 }
 
 export default function TranscriptionArea({
   text,
   isTranscribing,
+  onCancel, // Destructure the onCancel prop
 }: TranscriptionAreaProps) {
   const handleCopy = useCallback(async () => {
     try {
@@ -39,12 +41,20 @@ export default function TranscriptionArea({
 
   return (
     <Card className="p-4">
-      {isTranscribing && (
-        <div className="flex items-center h-full gap-2">
-          <Loader2 className="animate-spin text-muted-foreground" />
-          <p className="text-muted-foreground">Transcribing audio...</p>
-        </div>
-      )}
+      <div className="flex items-center justify-between">
+        {isTranscribing && (
+          <div className="flex items-center h-full gap-2">
+            <Loader2 className="animate-spin text-muted-foreground" />
+            <p className="text-muted-foreground">Transcribing audio...</p>
+          </div>
+        )}
+        {isTranscribing && onCancel && (
+          <Button variant="destructive" onClick={onCancel}>
+            <X className="w-4 h-4" />
+            Cancel
+          </Button>
+        )}
+      </div>
       <ScrollArea className="h-96 w-full rounded-md border p-4 mt-2">
         <div className="w-full">
           <p className="text-lg leading-relaxed whitespace-pre-wrap">{text}</p>

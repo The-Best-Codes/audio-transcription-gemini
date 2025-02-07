@@ -1,6 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { toBlobURL } from "@ffmpeg/util";
@@ -11,6 +18,24 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import FileUploadArea from "./FileUploadArea";
 import TranscriptionArea from "./TranscriptionArea";
+
+const geminiModels = [
+  {
+    value: "gemini-2.0-flash-thinking-exp-01-21",
+    label: "Gemini 2.0 Flash Thinking (Long Audio, Slower)",
+    description: "Slow but handles long audio",
+  },
+  {
+    value: "gemini-2.0-flash-exp",
+    label: "Gemini 2.0 Flash (Faster, Shorter Audio)",
+    description: "Faster, suitable for shorter audio clips",
+  },
+  {
+    value: "gemini-2.0-flash-lite-preview-02-05",
+    label: "Gemini 2.0 Flash Lite (Very Fast, Lower Quality)",
+    description: "Very fast but with reduced quality, use for short clips",
+  },
+];
 
 export default function TranscriptionApp() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -31,6 +56,10 @@ export default function TranscriptionApp() {
   const [customInstructions, setCustomInstructions] = useState("");
   const ffmpegRef = useRef(new FFmpeg());
   const [showApiKey, setShowApiKey] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(geminiModels[0].value);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const streamRef = useRef<any>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   // Initialize FFmpeg
   useEffect(() => {
@@ -193,6 +222,11 @@ export default function TranscriptionApp() {
     setCompressionProgress(0);
     setFileDuration(null);
     setCustomInstructions("");
+    setIsCancelling(false);
+    if (streamRef.current) {
+      streamRef.current.return();
+      streamRef.current = null;
+    }
   }, []);
 
   const handleApiKeyChange = (newKey: string) => {
@@ -219,6 +253,16 @@ export default function TranscriptionApp() {
     setShowApiKey(!showApiKey);
   };
 
+  const handleCancelTranscription = useCallback(() => {
+    setIsCancelling(true);
+    if (streamRef.current) {
+      streamRef.current.return();
+      streamRef.current = null;
+    }
+    setIsTranscribing(false);
+    toast.info("Transcription cancelled.");
+  }, []);
+
   const transcribeAudio = useCallback(async () => {
     if (!selectedFile) return;
     if (!apiKey) {
@@ -228,12 +272,13 @@ export default function TranscriptionApp() {
 
     setIsTranscribing(true);
     setTranscriptionText("");
+    setIsCancelling(false);
 
     try {
       // Initialize Gemini AI with the current API key
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({
-        model: "gemini-2.0-flash-thinking-exp-01-21",
+        model: selectedModel,
       });
 
       // Convert audio to base64
@@ -284,8 +329,12 @@ export default function TranscriptionApp() {
           ],
         });
 
+        streamRef.current = result.stream;
         // Handle the streaming response
-        for await (const chunk of result.stream) {
+        for await (const chunk of streamRef.current) {
+          if (isCancelling) {
+            break; // Stop processing if cancellation is requested
+          }
           const chunkText = chunk.text();
           setTranscriptionText((prev) => prev + chunkText);
         }
@@ -293,7 +342,9 @@ export default function TranscriptionApp() {
         throw error;
       }
 
-      toast.success("Transcription complete");
+      if (!isCancelling) {
+        toast.success("Transcription complete");
+      }
     } catch (error: unknown) {
       console.error("Transcription error:", error);
       if (error instanceof Error && error.message?.includes("API key")) {
@@ -305,8 +356,10 @@ export default function TranscriptionApp() {
       }
     } finally {
       setIsTranscribing(false);
+      setIsCancelling(false);
+      streamRef.current = null;
     }
-  }, [selectedFile, customInstructions, apiKey]);
+  }, [selectedFile, customInstructions, apiKey, selectedModel, isCancelling]);
 
   const handleCompressedFile = useCallback((compressedFile: File) => {
     setSelectedFile(compressedFile);
@@ -444,6 +497,26 @@ export default function TranscriptionApp() {
                         className="min-h-[100px]"
                       />
                     </div>
+
+                    <div className="flex flex-col">
+                      <p className="text-sm font-medium mb-1">Select Model</p>
+                      <Select
+                        value={selectedModel}
+                        onValueChange={setSelectedModel}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select a model" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {geminiModels.map((model) => (
+                            <SelectItem key={model.value} value={model.value}>
+                              {model.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
                     <Button
                       className="w-full"
                       onClick={transcribeAudio}
@@ -457,22 +530,27 @@ export default function TranscriptionApp() {
 
               {/* Transcription Area */}
               {(isTranscribing || transcriptionText) && (
-                <div className="space-y-4">
-                  <TranscriptionArea
-                    text={transcriptionText}
-                    isTranscribing={isTranscribing}
-                  />
-                  {!isTranscribing && transcriptionText && (
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={handleReset}
-                    >
-                      Transcribe Another File
-                    </Button>
-                  )}
-                </div>
+                <TranscriptionArea
+                  text={transcriptionText}
+                  isTranscribing={isTranscribing}
+                  onCancel={
+                    isTranscribing && !isCancelling
+                      ? handleCancelTranscription
+                      : undefined
+                  }
+                />
               )}
+              {(isTranscribing || transcriptionText) &&
+                !isTranscribing &&
+                transcriptionText && (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={handleReset}
+                  >
+                    Transcribe Another File
+                  </Button>
+                )}
             </>
           )}
         </CardContent>

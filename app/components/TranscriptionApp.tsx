@@ -54,6 +54,7 @@ export default function TranscriptionApp() {
   const [compressionProgress, setCompressionProgress] = useState(0);
   const [transcriptionText, setTranscriptionText] = useState("");
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileDuration, setFileDuration] = useState<number | null>(null);
   const [customInstructions, setCustomInstructions] = useState("");
@@ -225,6 +226,7 @@ export default function TranscriptionApp() {
     setSelectedFile(null);
     setTranscriptionText("");
     setIsTranscribing(false);
+    setIsUploading(false);
     setCompressionProgress(0);
     setFileDuration(null);
     setCustomInstructions("");
@@ -275,6 +277,7 @@ export default function TranscriptionApp() {
       abortControllerRef.current = null;
     }
     setIsTranscribing(false);
+    setIsUploading(false);
     toast.info("Transcription cancelled.");
   }, []);
 
@@ -285,7 +288,8 @@ export default function TranscriptionApp() {
       return;
     }
 
-    setIsTranscribing(true);
+    setIsUploading(true); // Set uploading state to true
+    setIsTranscribing(false);
     setTranscriptionText("");
     setIsCancelling(false);
 
@@ -369,6 +373,8 @@ export default function TranscriptionApp() {
         ); // Pass the AbortSignal
 
         streamRef.current = result.stream;
+        setIsUploading(false); // set uploading to false now that the stream has started
+        setIsTranscribing(true);
         // Handle the streaming response
         for await (const chunk of streamRef.current) {
           if (isCancelling) {
@@ -402,6 +408,7 @@ export default function TranscriptionApp() {
       }
     } finally {
       setIsTranscribing(false);
+      setIsUploading(false);
       setIsCancelling(false);
       streamRef.current = null;
       abortControllerRef.current = null; // Clear the AbortController
@@ -491,104 +498,111 @@ export default function TranscriptionApp() {
               )}
 
               {/* Selected File Info & Actions */}
-              {selectedFile && !isTranscribing && !transcriptionText && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Button onClick={handleReset}>
-                      <ArrowLeft className="w-4 h-4 mr-2" />
-                      Choose Another File
-                    </Button>
-                  </div>
-
-                  {/* File Metadata Card */}
-                  <Card className="p-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm font-medium">File Name</p>
-                        <p className="text-sm text-muted-foreground">
-                          {selectedFile.name}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Size</p>
-                        <p className="text-sm text-muted-foreground">
-                          {formatFileSize(selectedFile.size)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Duration</p>
-                        <p className="text-sm text-muted-foreground">
-                          {fileDuration
-                            ? formatDuration(fileDuration)
-                            : "Unknown"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Type</p>
-                        <p className="text-sm text-muted-foreground">
-                          {selectedFile.type || "audio/*"}
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
-
+              {selectedFile &&
+                !isTranscribing &&
+                !isUploading &&
+                !transcriptionText && (
                   <div className="space-y-4">
-                    <div className="flex flex-col">
-                      <p className="text-sm font-medium mb-1">
-                        Custom Instructions (optional)
-                      </p>
-                      <Textarea
-                        placeholder="Example: 'Transcribe professionally with no duplicate words or stumbling phrases like um or uh'"
-                        value={customInstructions}
-                        onChange={(e) => setCustomInstructions(e.target.value)}
-                        className="min-h-[100px]"
-                      />
+                    <div className="flex items-center justify-between">
+                      <Button onClick={handleReset}>
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Choose Another File
+                      </Button>
                     </div>
 
-                    <div className="flex flex-col">
-                      <p className="text-sm font-medium mb-1">Select Model</p>
-                      <Select
-                        value={selectedModel}
-                        onValueChange={setSelectedModel}
+                    {/* File Metadata Card */}
+                    <Card className="p-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm font-medium">File Name</p>
+                          <p className="text-sm text-muted-foreground">
+                            {selectedFile.name}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Size</p>
+                          <p className="text-sm text-muted-foreground">
+                            {formatFileSize(selectedFile.size)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Duration</p>
+                          <p className="text-sm text-muted-foreground">
+                            {fileDuration
+                              ? formatDuration(fileDuration)
+                              : "Unknown"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Type</p>
+                          <p className="text-sm text-muted-foreground">
+                            {selectedFile.type || "audio/*"}
+                          </p>
+                        </div>
+                      </div>
+                    </Card>
+
+                    <div className="space-y-4">
+                      <div className="flex flex-col">
+                        <p className="text-sm font-medium mb-1">
+                          Custom Instructions (optional)
+                        </p>
+                        <Textarea
+                          placeholder="Example: 'Transcribe professionally with no duplicate words or stumbling phrases like um or uh'"
+                          value={customInstructions}
+                          onChange={(e) =>
+                            setCustomInstructions(e.target.value)
+                          }
+                          className="min-h-[100px]"
+                        />
+                      </div>
+
+                      <div className="flex flex-col">
+                        <p className="text-sm font-medium mb-1">Select Model</p>
+                        <Select
+                          value={selectedModel}
+                          onValueChange={setSelectedModel}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select a model" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {geminiModels.map((model) => (
+                              <SelectItem key={model.value} value={model.value}>
+                                {model.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <Button
+                        className="w-full"
+                        onClick={transcribeAudio}
+                        disabled={isLoading}
                       >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select a model" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {geminiModels.map((model) => (
-                            <SelectItem key={model.value} value={model.value}>
-                              {model.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        Transcribe Audio
+                      </Button>
                     </div>
-
-                    <Button
-                      className="w-full"
-                      onClick={transcribeAudio}
-                      disabled={isLoading}
-                    >
-                      Transcribe Audio
-                    </Button>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Transcription Area */}
-              {(isTranscribing || transcriptionText) && (
+              {(isTranscribing || isUploading || transcriptionText) && (
                 <TranscriptionArea
                   text={transcriptionText}
                   isTranscribing={isTranscribing}
+                  isUploading={isUploading}
                   onCancel={
-                    isTranscribing && !isCancelling
+                    (isTranscribing || isUploading) && !isCancelling
                       ? handleCancelTranscription
                       : undefined
                   }
                 />
               )}
-              {(isTranscribing || transcriptionText) &&
+              {(isTranscribing || isUploading || transcriptionText) &&
                 !isTranscribing &&
+                !isUploading &&
                 transcriptionText && (
                   <Button
                     variant="default"

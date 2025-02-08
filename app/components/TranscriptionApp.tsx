@@ -591,7 +591,7 @@ export default function TranscriptionApp() {
                 !isTranscribing &&
                 transcriptionText && (
                   <Button
-                    variant="outline"
+                    variant="default"
                     className="w-full"
                     onClick={handleReset}
                   >

@@ -121,9 +121,9 @@ export default function FileUploadArea({
     return (
       <Alert
         variant="destructive"
-        className="mb-4 rounded-md shadow-sm dark:bg-red-900/50 dark:border-red-700"
+        className="mb-4 rounded-md shadow-sm dark:bg-red-900/50 dark:border-red-700 dark:text-white"
       >
-        <AlertCircle className="h-5 w-5" />
+        <AlertCircle className="h-5 w-5 dark:text-white" />
         <AlertTitle className="text-lg font-semibold">
           Large File Detected
         </AlertTitle>

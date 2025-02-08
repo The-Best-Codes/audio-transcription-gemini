@@ -53,8 +53,8 @@ export default function TranscriptionArea({
       <div className="flex items-center justify-between">
         {(isTranscribing || isUploading) && (
           <div className="flex items-center h-full gap-2">
-            <Loader2 className="animate-spin text-muted-foreground" />
-            <p className="text-muted-foreground">{statusMessage}</p>
+            <Loader2 className="animate-spin text-foreground" />
+            <p className="text-foreground">{statusMessage}</p>
           </div>
         )}
         {(isTranscribing || isUploading) && onCancel && (

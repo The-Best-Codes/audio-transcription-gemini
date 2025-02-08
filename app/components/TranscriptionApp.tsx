@@ -24,16 +24,19 @@ const geminiModels = [
     value: "gemini-2.0-flash-thinking-exp-01-21",
     label: "Gemini 2.0 Flash Thinking (Long Audio, Slower)",
     description: "Slow but handles long audio",
+    maxOutputTokens: 65536,
   },
   {
     value: "gemini-2.0-flash-exp",
     label: "Gemini 2.0 Flash (Faster, Shorter Audio)",
     description: "Faster, suitable for shorter audio clips",
+    maxOutputTokens: 8192,
   },
   {
     value: "gemini-2.0-flash-lite-preview-02-05",
     label: "Gemini 2.0 Flash Lite (Very Fast, Lower Quality)",
     description: "Very fast but with reduced quality, use for short clips",
+    maxOutputTokens: 8192,
   },
 ];
 
@@ -293,8 +296,22 @@ export default function TranscriptionApp() {
     try {
       // Initialize Gemini AI with the current API key
       const genAI = new GoogleGenerativeAI(apiKey);
+
+      // Find the selected model object
+      const selectedModelObject = geminiModels.find(
+        (model) => model.value === selectedModel,
+      );
+
+      if (!selectedModelObject) {
+        toast.error("Selected model not found.");
+        return;
+      }
+
       const model = genAI.getGenerativeModel({
         model: selectedModel,
+        generationConfig: {
+          maxOutputTokens: selectedModelObject.maxOutputTokens, // Set the maxOutputTokens from the model config
+        },
       });
 
       // Convert audio to base64

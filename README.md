@@ -95,12 +95,3 @@ graph LR
     ```
 
     Open your browser and navigate to `http://localhost:3000`.
-
-## Important Considerations
-
-- **Client-Side Processing:** All audio processing (compression, base64 encoding) happens in the browser. This can be resource-intensive for large files.
-- **API Key Security:** The Gemini API key is stored in `localStorage`. While this is convenient for the user, it's not the most secure approach. Consider more robust client-side key management solutions if security is a major concern.
-- **Error Handling:** The code includes basic error handling with `toast` notifications. Implement more comprehensive error handling and logging for production environments.
-- **FFmpeg Performance:** FFmpeg can be slow for very large files. Consider providing feedback to the user about the expected compression time.
-- **Gemini API Limits:** Be aware of the usage limits and pricing of the Gemini API.
-- **Cancellation:** Uses `AbortController` to stop the streaming transcription when user cancels. Make sure to handle `AbortError` correctly.

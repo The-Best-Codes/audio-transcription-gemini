@@ -21,21 +21,27 @@ import TranscriptionArea from "./TranscriptionArea";
 
 const geminiModels = [
   {
-    value: "gemini-2.0-flash-thinking-exp-01-21",
-    label: "Gemini 2.0 Flash Thinking (Long Audio, Slower)",
-    description: "Slow but handles long audio",
+    value: "gemini-2.5-flash-preview-05-20",
+    label: "Gemini 2.5 Flash (Long Audio)",
+    description: "Good for long clips, moderate speed and decent quality.",
     maxOutputTokens: 65536,
   },
   {
-    value: "gemini-2.0-flash-exp",
+    value: "gemini-2.5-pro-preview-06-05",
+    label: "Gemini 2.5 Pro (Long Audio, Very Slow)",
+    description: "Good for long clips, very slow but high quality.",
+    maxOutputTokens: 65536,
+  },
+  {
+    value: "gemini-2.0-flash",
     label: "Gemini 2.0 Flash (Faster, Shorter Audio)",
-    description: "Faster, suitable for shorter audio clips",
+    description: "Fast, suitable for shorter audio clips.",
     maxOutputTokens: 8192,
   },
   {
-    value: "gemini-2.0-flash-lite-preview-02-05",
+    value: "gemini-2.0-flash-lite",
     label: "Gemini 2.0 Flash Lite (Very Fast, Lower Quality)",
-    description: "Very fast but with reduced quality, use for short clips",
+    description: "Very fast but with reduced quality, use for short clips.",
     maxOutputTokens: 8192,
   },
 ];

@@ -1,5 +1,4 @@
 "use client";
-
 import Link from "next/link";
 import TranscriptionApp from "./components/TranscriptionApp";
 import NoSSRWrapper from "./NoSSRWrapper";

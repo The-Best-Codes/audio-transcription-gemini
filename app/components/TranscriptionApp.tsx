@@ -27,12 +27,6 @@ const geminiModels = [
     maxOutputTokens: 65536,
   },
   {
-    value: "gemini-2.5-pro-preview-06-05",
-    label: "Gemini 2.5 Pro (Very Slow, Long Audio)",
-    description: "Good for long clips, very slow but high quality.",
-    maxOutputTokens: 65536,
-  },
-  {
     value: "gemini-2.0-flash",
     label: "Gemini 2.0 Flash (Fast, Shorter Audio)",
     description: "Fast, suitable for shorter audio clips.",
@@ -43,6 +37,12 @@ const geminiModels = [
     label: "Gemini 2.0 Flash Lite (Very Fast, Lower Quality)",
     description: "Very fast but with reduced quality, use for short clips.",
     maxOutputTokens: 8192,
+  },
+  {
+    value: "gemini-2.5-pro-preview-06-05",
+    label: "Gemini 2.5 Pro (Paid, Slow, Long Audio)",
+    description: "Good for long clips, very slow but high quality.",
+    maxOutputTokens: 65536,
   },
 ];
 

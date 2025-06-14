@@ -9,14 +9,14 @@ interface TranscriptionAreaProps {
   text: string;
   isTranscribing: boolean;
   isUploading: boolean;
-  onCancel?: () => void; // Add the onCancel prop
+  onCancel?: () => void;
 }
 
 export default function TranscriptionArea({
   text,
   isTranscribing,
   isUploading,
-  onCancel, // Destructure the onCancel prop
+  onCancel,
 }: TranscriptionAreaProps) {
   const handleCopy = useCallback(async () => {
     try {
@@ -70,7 +70,7 @@ export default function TranscriptionArea({
         </div>
       </ScrollArea>
       {!isTranscribing && !isUploading && text && (
-        <div className="flex justify-end gap-2 mt-4 sticky bottom-0 bg-background p-2">
+        <div className="flex justify-end gap-2 mt-4 sticky bottom-0 rounded-md p-2">
           <Button variant="outline" onClick={handleCopy}>
             <Copy className="w-4 h-4" />
             Copy

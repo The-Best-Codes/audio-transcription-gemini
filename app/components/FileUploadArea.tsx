@@ -152,7 +152,7 @@ export default function FileUploadArea({
   return (
     <Card
       {...getRootProps()}
-      className={`relative p-8 border-2 border-dashed rounded-lg text-center ${
+      className={`relative p-8 border-2 border-dashed rounded-md text-center ${
         isDragActive
           ? "border-primary bg-primary/10"
           : isCompressing

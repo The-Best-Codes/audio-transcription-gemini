@@ -288,7 +288,7 @@ export default function TranscriptionApp() {
       return;
     }
 
-    setIsUploading(true); // Set uploading state to true
+    setIsUploading(true);
     setIsTranscribing(false);
     setTranscriptionText("");
     setIsCancelling(false);
@@ -370,7 +370,7 @@ export default function TranscriptionApp() {
             ],
           },
           { signal: signal },
-        ); // Pass the AbortSignal
+        );
 
         streamRef.current = result.stream;
         setIsUploading(false); // set uploading to false now that the stream has started
@@ -487,7 +487,6 @@ export default function TranscriptionApp() {
                 />
               )}
 
-              {/* Compression Progress */}
               {isLoading && compressionProgress > 0 && (
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">
@@ -497,7 +496,6 @@ export default function TranscriptionApp() {
                 </div>
               )}
 
-              {/* Selected File Info & Actions */}
               {selectedFile &&
                 !isTranscribing &&
                 !isUploading &&
@@ -505,7 +503,7 @@ export default function TranscriptionApp() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <Button onClick={handleReset}>
-                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        <ArrowLeft className="w-4 h-4" />
                         Choose Another File
                       </Button>
                     </div>
@@ -587,7 +585,6 @@ export default function TranscriptionApp() {
                   </div>
                 )}
 
-              {/* Transcription Area */}
               {(isTranscribing || isUploading || transcriptionText) && (
                 <TranscriptionArea
                   text={transcriptionText}

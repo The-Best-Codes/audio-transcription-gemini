@@ -1,7 +1,7 @@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { AlertCircle, Clock, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 
@@ -102,13 +102,12 @@ export default function FileUploadArea({
 
   if (durationError) {
     return (
-      <Alert variant="destructive" className="mb-4 rounded-md shadow-xs">
-        <Clock className="h-5 w-5" />
+      <Alert variant="destructive" className="rounded-md shadow-xs">
         <AlertTitle className="text-lg font-semibold">
           Duration Limit Exceeded
         </AlertTitle>
         <AlertDescription className="text-sm">
-          <p className="mb-4">{durationError}</p>
+          <p className="mb-2">{durationError}</p>
           <Button variant="destructive" onClick={handleTryAnotherFile}>
             Try Another File
           </Button>
@@ -121,18 +120,17 @@ export default function FileUploadArea({
     return (
       <Alert
         variant="destructive"
-        className="mb-4 rounded-md shadow-xs dark:bg-red-900/50 dark:border-red-700 dark:text-white"
+        className="rounded-md shadow-xs dark:bg-red-900/50 dark:border-red-700 dark:text-white"
       >
-        <AlertCircle className="h-5 w-5 dark:text-white" />
         <AlertTitle className="text-lg font-semibold">
           Large File Detected
         </AlertTitle>
         <AlertDescription className="text-sm">
-          <p className="mb-4">
+          <p className="mb-2">
             The selected file is larger than 25MB. Would you like to compress it
             or try another file?
           </p>
-          <div className="flex gap-4">
+          <div className="flex gap-2">
             <Button onClick={handleCompressFile} disabled={isCompressing}>
               {isCompressing ? "Compressing..." : "Compress File"}
             </Button>

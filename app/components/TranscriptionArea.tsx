@@ -49,28 +49,31 @@ export default function TranscriptionArea({
   }
 
   return (
-    <Card className="p-4">
-      <div className="flex items-center justify-between">
-        {(isTranscribing || isUploading) && (
-          <div className="flex items-center h-full gap-2">
-            <Loader2 className="animate-spin text-foreground" />
-            <p className="text-foreground">{statusMessage}</p>
-          </div>
-        )}
-        {(isTranscribing || isUploading) && onCancel && (
-          <Button variant="destructive" onClick={onCancel}>
-            <X className="w-4 h-4" />
-            Cancel
-          </Button>
-        )}
-      </div>
-      <ScrollArea className="h-96 w-full rounded-md border p-4 mt-2">
+    <Card className="p-4 gap-4">
+      {(isTranscribing || isUploading) && (
+        <div className="flex items-center justify-between">
+          {(isTranscribing || isUploading) && (
+            <div className="flex items-center h-full gap-2">
+              <Loader2 className="animate-spin text-foreground" />
+              <p className="text-foreground">{statusMessage}</p>
+            </div>
+          )}
+          {(isTranscribing || isUploading) && onCancel && (
+            <Button variant="destructive" onClick={onCancel}>
+              <X className="w-4 h-4" />
+              Cancel
+            </Button>
+          )}
+        </div>
+      )}
+
+      <ScrollArea className="h-96 w-full rounded-md border p-4">
         <div className="w-full">
           <p className="text-lg leading-relaxed whitespace-pre-wrap">{text}</p>
         </div>
       </ScrollArea>
       {!isTranscribing && !isUploading && text && (
-        <div className="flex justify-end gap-2 mt-4 sticky bottom-0 rounded-md p-2">
+        <div className="flex justify-end gap-2 sticky bottom-0 rounded-md p-0">
           <Button variant="outline" onClick={handleCopy}>
             <Copy className="w-4 h-4" />
             Copy

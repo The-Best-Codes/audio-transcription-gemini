@@ -422,7 +422,7 @@ export default function TranscriptionApp() {
   return (
     <div className="container max-w-4xl mx-auto p-4 space-y-4">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0">
           <CardTitle>AI Audio Transcriber</CardTitle>
           {apiKey && (
             <Button variant="secondary" size="sm" onClick={handleResetApiKey}>
@@ -430,10 +430,9 @@ export default function TranscriptionApp() {
             </Button>
           )}
         </CardHeader>
-        <CardContent className="space-y-4 pt-4">
-          {/* Show API Key Input or Main Content */}
+        <CardContent className="space-y-4">
           {!apiKey ? (
-            <div className="space-y-4 p-6 flex flex-col items-center justify-center border-2 border-dashed rounded-lg">
+            <div className="space-y-4 p-4 flex flex-col items-center justify-center border-2 border-dashed rounded-lg">
               <h2 className="text-lg font-semibold">
                 Enter Your Gemini API Key
               </h2>

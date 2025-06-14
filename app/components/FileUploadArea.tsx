@@ -102,7 +102,7 @@ export default function FileUploadArea({
 
   if (durationError) {
     return (
-      <Alert variant="destructive" className="mb-4 rounded-md shadow-sm">
+      <Alert variant="destructive" className="mb-4 rounded-md shadow-xs">
         <Clock className="h-5 w-5" />
         <AlertTitle className="text-lg font-semibold">
           Duration Limit Exceeded
@@ -121,7 +121,7 @@ export default function FileUploadArea({
     return (
       <Alert
         variant="destructive"
-        className="mb-4 rounded-md shadow-sm dark:bg-red-900/50 dark:border-red-700 dark:text-white"
+        className="mb-4 rounded-md shadow-xs dark:bg-red-900/50 dark:border-red-700 dark:text-white"
       >
         <AlertCircle className="h-5 w-5 dark:text-white" />
         <AlertTitle className="text-lg font-semibold">

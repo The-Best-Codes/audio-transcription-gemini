@@ -81,7 +81,6 @@ graph LR
     ```
 
 3.  **Set up environment variables:**
-
     - You don't necessarily need an `.env` file for this project as the API key is handled client-side. However, ensure you have a Gemini API key.
 
 4.  **Run the development server:**

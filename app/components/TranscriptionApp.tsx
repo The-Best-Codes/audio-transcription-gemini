@@ -30,7 +30,7 @@ const geminiModels = [
     value: "gemini-3.1-flash-lite-preview",
     label: "Gemini 3.1 Flash Lite (Very Fast, Lower Quality)",
     description: "Very fast but with reduced quality, use for short clips.",
-    maxOutputTokens: 8192,
+    maxOutputTokens: 65536,
   },
   {
     value: "gemini-3.1-pro-preview",
